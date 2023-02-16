@@ -279,7 +279,7 @@ class DATA:
             d += col.dist(row1.cells[col.at] , row2.cells[col.at]) ** the['p']
         return (d / n) ** (1 / the['p']) 
 
-    def around(self , row1 , *rows , **cols): #--> list[dict{row: , dist: }]
+    def around(self , row1 , rows=None , cols=None): #--> list[dict{row: , dist: }]
         def fun(row2):
             dic = {}
             dic['row'] = row2
@@ -302,11 +302,12 @@ class DATA:
         rows = kwargs['rows'] if 'rows' in kwargs else self.rows
         some = many(rows , the['Sample'])
         A = kwargs['above'] if ('above' in kwargs and kwargs['above']) else any(some)
-        B = self.around(row1=A , rows=some)[int(the['Far'] * len(rows) // 1)]['row']
+        B = self.around(row1=A , rows=some)[int(the['Far'] * len(rows)) // 1]['row']
         c = dist(A , B)
         left , right = {} , {}
-        for n , tmp in enumerate(sort(list(map(rows , project).values()) , lt('dist'))):
-            if n < len(rows) // 2:
+        #print(sort(list(map(rows , project).values()) , lt('dist')))
+        for n , tmp in enumerate(sort(list(map(rows , project).values()) , lt('dist')) , 1):
+            if n <= len(rows) // 2:
                 push(left , tmp['row'])
                 mid = tmp['row']
             else:
@@ -425,7 +426,7 @@ def push(t:dict, x):
 
 # x; returns one items at random
 def any(t):
-    return list(t.values())[rint(0,len(t)-1)]
+    return list(t.values())[rint(len(t),1)-1]
 
 # t1; returns some items from `t`
 def many(t, n):
