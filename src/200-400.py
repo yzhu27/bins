@@ -120,5 +120,59 @@ def bin(col , x):
         return x
     tmp = (col.hi - col.lo) / (the['bins'] - 1)
     return 1 if col.hi == col.lo else math.floor(x/tmp + 0.5)*tmp
+  
+def mergeAny(ranges0):
+  def noGaps(t):
+    for j in range(1 , len(t)):
+      t[j].lo = t[j-1].hi
+    t[0].lo = float('-inf')
+    t[-1].hi = float('inf')
+    return t
+  ranges1 , j = {} , 0
+  while j < len(ranges0):
+    if j < len(ranges0)-1 and ranges0[j+1]:
+      left , right = ranges0[j] , ranges0[j+1]
+      y = merge2(left.y , right.y)
+      if y:
+        j += 1
+        left.hi , left.y = right.hi , right.y
+    else:
+      left = ranges0[j]
+    push(ranges1 , left)
+    j += 1
+  return noGaps(ranges0) if len(ranges0) == len(ranges1) else mergeAny(ranges1)
+
+def merge2(col1 , col2):
+  new = merge(col1 , col2):
+  if div(new) <= (div(col1)*col1.n + div(col2)*col2.n)/new.n:
+    return new
+
+def merge(col1 , col2):
+  new = copy(col1)
+  if col1.isSym:
+    for x , n in col2.has:
+      add(new , x , n)
+  else:
+    for _ , n in col2.has:
+      add(new , n)
+    new.lo = min(col1.lo , col2.lo)
+    new.hi = max(col1.hi , col2.hi)
+  return new
+
+def itself(x):
+  return x
+
+def rnd(n , nPlaces):
+  mult = 10**(nPlaces or 2)
+  return math.floor(n * mult + 0.5) / mult
+
+Seed=937162211
+def rint(nlo,nhi): 
+  return math.floor(0.5 + rand(nlo,nhi))
+
+def rand(nlo,nhi):
+  nlo, nhi = nlo or 0, nhi or 1
+  Seed = (16807 * Seed) % 2147483647
+  return nlo + (nhi-nlo) * Seed / 2147483647
 
 
