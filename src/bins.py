@@ -655,9 +655,13 @@ def main(options, help, funs, *k):
                     options[k] = v
                 if fun() == False:
                     fails += 1
+                    n += 1
                     print("❌ fail:", what)
                 else:
+                    y += 1
                     print("✅ pass:", what)
+        if y+n > 0:
+            print(("\n🔆 " + str(o({'pass':y, 'fail':n, 'success':100*y/(y+n)//1}))))
 
 def cli(t, list):
     slots = list[1:]
@@ -699,10 +703,12 @@ if __name__ == '__main__':
     #   return the.some.missing.nested.field end)
     def thefun():
         global the
-        return oo(the)
+        print(fmt("\n▶️  %s %s",'the',("-")*(60)))
+        return oo(the)  
     go("the", "show options", thefun)
 
     def randfun():
+        print(fmt("\n▶️  %s %s",'rand',("-")*(60)))
         global Seed
         Seed = 1
         t = {}
@@ -713,25 +719,28 @@ if __name__ == '__main__':
         for _ in range(1, 1001):
             push(u, rint(100))
         for k, v in t.items():
-            assert (v == u[k])
+            assert (v == u[k])   
     go("rand", "demo random number generation", randfun)
 
     def somefun():
+        print(fmt("\n▶️  %s %s",'some',("-")*(60)))
         global the
         the['Max'] = 32
         num1 = NUM()
         for i in range(1, 10001):
             add(num1, i)
-        oo(has(num1).values())
+        oo(has(num1).values()) 
     go("some", "demo of reservoir sampling", somefun)
 
     def symsfun():
+        print(fmt("\n▶️  %s %s",'syms',("-")*(60)))
         sym = adds(SYM(),["a", "a", "a", "a", "b", "b", "c"])
         print (mid(sym), rnd(div(sym)))
-        return 1.38 == rnd(div(sym))
+        return 1.38 == rnd(div(sym)) 
     go("syms","demo SYMS", symsfun)
 
     def numsfun():
+        print(fmt("\n▶️  %s %s",'nums',("-")*(60)))
         num1, num2 = NUM(), NUM()
         for _ in range(1, 10001):
             add(num1, rand())
@@ -743,6 +752,7 @@ if __name__ == '__main__':
     go("nums", "demo of NUM", numsfun)
 
     def csvfun():
+        print(fmt("\n▶️  %s %s",'csv',("-")*(60)))
         n = 0
         def tmp(t):
             return len(t)
@@ -752,6 +762,7 @@ if __name__ == '__main__':
     
     
     def datafun():
+        print(fmt("\n▶️  %s %s",'data',("-")*(60)))
         data = DATA.read(the['file'])
         col = data.cols['x'][0]
         print(str(col['lo'])+" "+str(col['hi'])+" "+str(mid(col))+" "+str(div(col)))
@@ -761,6 +772,7 @@ if __name__ == '__main__':
     
 
     def clonefun():
+        print(fmt("\n▶️  %s %s",'clone',("-")*(60)))
         data1 = DATA.read(the['file'])
         data2 = data1.clone(data1.rows)
         oo(stats(data1))
@@ -770,6 +782,7 @@ if __name__ == '__main__':
 
 
     def cliffsfun():
+        print(fmt("\n▶️  %s %s",'cliffs',("-")*(60)))
         assert False == cliffsDelta({0:8,1:7,2:6,3:2,4:5,5:8,6:7,7:3},{0:8,1:7,2:6,3:2,4:5,5:8,6:7,7:3}),"1"
         assert True == cliffsDelta({0:8,1:7,2:6,3:2,4:5,5:8,6:7,7:3}, {0:9,1:9,2:7,3:8,4:10,5:9,6:6}),"2"
         t1,t2 = {},{}
@@ -787,6 +800,7 @@ if __name__ == '__main__':
     go("cliffs","stats tests", cliffsfun)
 
     def distfun():
+        print(fmt("\n▶️  %s %s",'dist',("-")*(60)))
         data = DATA.read(the['file'])
         num = NUM()
         for _,row in data.rows.items():
@@ -795,20 +809,23 @@ if __name__ == '__main__':
     go("dist","distance test", distfun)
 
     def halffun():
+        print(fmt("\n▶️  %s %s",'half',("-")*(60)))
         data = DATA.read(the['file'])
         left, right, A, B, c = half(data)
         print(str(len(left))+"   "+str(len(right)))
         l = DATA.clone(data,left)
         r = DATA.clone(data,right)
         print("l   "+str(o(stats(l))))
-        print("r   "+str(o(stats(r))))
+        print("r   "+str(o(stats(r))))  
     go("half","divide data in half", halffun)
 
     def treefun():
+        print(fmt("\n▶️  %s %s",'tree',("-")*(60)))
         showTree(tree(DATA.read(the['file'])))
     go("tree","make snd show tree of clusters", treefun)
 
     def swayfun():
+        print(fmt("\n▶️  %s %s",'sway',("-")*(60)))
         data = DATA.read(the['file'])
         best,rest = sway(data)
         print("\nall    "+str(o(stats(data))))
@@ -823,6 +840,7 @@ if __name__ == '__main__':
 
 
     def binsfun():
+        print(fmt("\n▶️  %s %s",'bins',("-")*(60)))
         b5=""
         data = DATA.read(the['file'])
         best,rest = sway(data)
@@ -834,7 +852,7 @@ if __name__ == '__main__':
                 b5 = range['txt']
                 #print("this is range:")
                 #print(range)
-                print(str(range['txt'])+"  "+str(range['lo'])+"  "+str(range['hi'])+"  "+str(rnd(value(range['y']['has'],len(best.rows),len(rest.rows),"best")))+"  "+str(o(range['y']['has'])))
+                print(str(range['txt'])+"  "+str(range['lo'])+"  "+str(range['hi'])+"  "+str(rnd(value(range['y']['has'],len(best.rows),len(rest.rows),"best")))+"  "+str(o(range['y']['has']))) 
     go("bins", "find deltas between best and rest", binsfun)
 
     main(the, help, egs)
