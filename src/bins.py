@@ -53,7 +53,7 @@ def NUM(n=0, s=""):
 
 # Create a `COL` to summarize a stream of data for a column.
 def COL(n, s):
-    col = NUM(n, s) if s.startswith(("[A-Z]")) else SYM(n, s)
+    col = NUM(n, s) if s.istitle() else SYM(n, s)
     col["isIgnored"] = col["txt"].endswith("X")
     col["isKlass"] = col["txt"].endswith("!")
     
@@ -63,7 +63,7 @@ def COL(n, s):
 # Create a set of `NUM`s or `SYM`s columns.
 def COLS(ss):
     cols = {"names": ss, "all": {}, "x": {}, "y": {}}
-    for n, s in enumerate(ss):
+    for n, s in ss.items():
         # use push() here, defined in later code
         # col = cols['all'].update(COL(n, s))
         col = push(cols['all'], COL(n,s))
@@ -114,9 +114,9 @@ class DATA:
     # Create a new DATA with the same columns as  `data`. Optionally, load up the new
     # DATA with the rows inside `ts`.
     def clone(data, ts=None):
-        data1 = row(DATA(), data["cols"]["names"])
+        data1 = row(DATA(), data.cols["names"])
         if ts:
-            for t in ts:
+            for _,t in ts.items():
                 row(data1, t)
         return data1
 
@@ -126,13 +126,18 @@ class DATA:
 # To avoid updating skipped columns, we only iterate
 # over `cols.x` and `cols.y`.
 def row(data, t):
-    if data["cols"]:
+    if data.cols:
         #data["rows"].update(t)
-        push(data['rows'], t)
-        for cols in data["cols"]["x"], data["cols"]["y"]:
-            for col in cols:
-                #not sure what is add()
-                add(col, t[col["at"]])
+        push(data.rows, t)
+        for _,col in data.cols["x"].items():
+            
+         #not sure what is add()
+            add(col, t[col["at"]])
+        for _,col in data.cols["y"].items():
+            #oo(cols)
+
+            #not sure what is add()
+            add(col, t[col["at"]])
     else:
         data.cols = COLS(t)
     return data
@@ -151,7 +156,7 @@ def add(col, x, n=None):
     if x != "?":
         n = n or 1
         col['n'] += n
-        if 'isSym' in col and col['isSym']:
+        if col['isSym']:
             col['has'][x] = n + (col['has'].get(x) or 0 )
             if col['has'][x] > col['most']:
                 col['most'], col['mode'] = col['has'][x], x
@@ -179,15 +184,15 @@ def adds(col, t):
 
 # Update a RANGE to cover `x` and `y`
 def extend(range_, n, s):
-    range_.lo = min(n, range_.lo)
-    range_.hi = max(n, range_.hi)
-    add(range_.y, s)
+    range_['lo'] = min(n, range_['lo'])
+    range_['hi'] = max(n, range_['hi'])
+    add(range_['y'], s)
 
 # A query that returns contents of a column. If `col` is a `NUM` with
 # unsorted contents, then sort before return the contents.
 # Called by (e.g.) the `mid` and `div` functions.
 def has(col):
-    if not 'isSym' in col and not col['ok']:
+    if not col['isSym'] and not col['ok']:
         col['has'] = sort(col['has'])
     col['ok'] = True
     return col['has']
@@ -216,12 +221,29 @@ def div(col):
 
 # A query that returns `mid` or `div` of `cols` (defaults to `data.cols.y`).
 def stats(data, fun=None, cols=None, nPlaces=None):
-    cols = cols or data['cols']['y']
-    # not sure follow code is correct or not
-    # rnd() is defined in later code
-    tmp = {k: (rnd((fun or mid)(col), nPlaces), col['txt']) for k, col in cols.items()}
-    tmp['N'] = len(data['rows'])
-    return tmp, {k: mid(col) for k, col in cols.items()}
+    cols = cols or data.cols['y']
+    # # not sure follow code is correct or not
+    # # rnd() is defined in later code
+    # def statsfun(k,col):
+    #     return rnd(fun or mid)
+    # tmp = {k: (rnd((fun or mid)(col), nPlaces), col['txt']) for k, col in cols.items()}
+    # tmp['N'] = len(data.rows)
+    # return tmp, {k: mid(col) for k, col in cols.items()}
+
+    def funn(k , col):
+        if fun == 'div':
+            return rnd(div(col), nPlaces)
+        else:
+            return rnd(mid(col) , nPlaces)
+    u = {}
+    for i in range(len(cols)):
+        k = cols[i]['txt']
+        u[k] = funn(k , cols[i])
+    res = {}
+    for k in sorted(u.keys()):
+        res[k] = u[k]
+    res['N'] = len(data.rows)
+    return res
 
 # A query that normalizes `n` 0..1. Called by (e.g.) the `dist` function.
 def norm(num,n):
@@ -231,8 +253,7 @@ def norm(num,n):
 
 
 
-def value(has):
-  sGoal,nB,nR = sGoal or True, nB or 1, nR or 1
+def value(has, nB=1,nR=1,sGoal=True):
   b,r = 0,0
   for x,n in has.items():
     if x == sGoal:
@@ -246,7 +267,7 @@ def dist(data, t1, t2, cols):
   def dist1(col, x, y):
     if x == '?' and y == '?':
       return 1
-    if col.isSym:
+    if col['isSym']:
       return 0 if x == y else 1
     else:
       x , y = norm(col , x) , norm(col , y)
@@ -256,28 +277,30 @@ def dist(data, t1, t2, cols):
         y = 1 if x < 0.5 else 1
       return abs(x - y)
   d , n = 0 , 1/float('inf')
-  for _ , col in enumerate(cols or data.cols.x):
+  for _ , col in (cols or data.cols['x']).items():
     n += 1
-    d += dist1(col , t1[col.at] , t2[col.at]) ** the['p']
+    d += dist1(col , t1[col['at']] , t2[col['at']]) ** the['p']
   return (d/n)**(1/the['p'])
 
 def better(data , row1 , row2):
   s1 = 0
   s2 = 0
-  ys = data.cols.y
+  ys = data.cols['y']
   for _ , col in ys.items():
-      x = norm(col , row1[col.at])
-      y = norm(col , row2[col.at])
-      s1 -= math.exp(col.w * (x - y) / len(ys))
-      s2 -= math.exp(col.w * (y - x) / len(ys))
+      x = norm(col , row1[col['at']])
+      y = norm(col , row2[col['at']])
+      s1 -= math.exp(col['w'] * (x - y) / len(ys))
+      s2 -= math.exp(col['w'] * (y - x) / len(ys))
   return (s1 / len(ys)) < (s2 / len(ys))
 
-def half(data , rows , cols , above):
+def half(data , rows=None , cols=None , above=None):
   left , right = {} , {}
   def gap(r1 , r2):
     return dist(data , r1 , r2 , cols)
   def cos(a , b , c):
-    return (a**2 + c**2 - b**2)/(2*c)
+    if c != 0:
+        return (a**2 + c**2 - b**2)/(2*c)
+    else: return math.inf
   def proj(r):
     return {'row':r , 'x':cos(gap(r , A) , gap(r , B) , c)}
   rows = rows or data.rows
@@ -285,32 +308,32 @@ def half(data , rows , cols , above):
   A = (the['Reuse'] and above) or any(some)
   def fun(r):
     return {'row':r , 'd':gap(r,A)}
-  tmp = sort(map(some , fun) , lt('d'))
-  far = tmp[(len(tmp) * the['Far'])//1]
+  tmp = sort2(map(some , fun).values() , lt('d'))
+  far = tmp[(len(tmp) * int(the['Far']))]
   B = far['row']
   c = far['d']
-  for n , two in enumerate(sort(list(map(rows , proj).values()) , lt('x'))):
+  for n , two in enumerate(sort2(list(map(rows , proj).values()) , lt('x'))):
       if n+1 <= (len(rows)+1) // 2:
           push(left , two['row'])
       else:
           push(right , two['row'])
   return left , right , A , B , c
 
-def tree(data , rows , cols , above):
+def tree(data , rows=None , cols=None , above=None):
   rows = rows or data.rows
   here = {'data':DATA.clone(data , rows)}
   if len(rows) >= 2*(len(data.rows)**the['min']):
-    left , right , A , B = half(data , rows , cols , above)
+    left , right , A , B, _ = half(data , rows , cols , above)
     here['left'] = tree(data , left , cols , A)
     here['right'] = tree(data , right , cols , B)
   return here
 
-def showTree(tree , lvl):
+def showTree(tree , lvl=None):
     if tree:
         lvl = lvl if lvl is not None else 0
-        res = '| ' * lvl + str(len(tree['data'].rows)) + '  '
+        res = '| ' * lvl +"["+str(len(tree['data'].rows))+"]" + '  '
         if 'left' not in tree or lvl == 0:
-            print(res + o(tree['data'].stats("mid",tree['data'].cols.y)))
+            print(res + str(o(stats(tree['data']))))
         else:
             print(res)
         if 'left' in tree:
@@ -323,7 +346,7 @@ def sway(data):
     if len(rows) <= len(data.rows)**the['min']:
       return rows , many(worse , the['rest']*len(rows))
     else:
-      l , r , A , B = half(data , rows , None , above)
+      l , r , A , B, _ = half(data , rows , None , above)
       if better(data , B , A):
         l , r , A , B = r , l , B , A
       def fun(row):
@@ -335,68 +358,83 @@ def sway(data):
 
 def bins(cols , rowss):
     out = {}
-    for _ , col in enumerate(cols):
+    for _ , col in cols.items():
         ranges = {}
-        for y , rows in enumerate(rowss):
-            for _ , row in enumerate(rows):
-                x = row[col.at]
+        for y , rows in rowss.items():
+            for _ , row in rows.items():
+                x = row[col['at']]
                 if x != '?':
-                    k = bin(col , x)
-                    ranges[k] = ranges[k] or RANGE(col.at , col.txt , x)
+                    k = int(bin(col , x))
+                    ranges[k] = RANGE(col['at'] , col['txt'] , x) if k not in ranges else ranges[k]
                     extend(ranges[k] , x , y)
-        ranges = sort(map(ranges , itself) , lt('lo'))
-        out[len(out)] =  ranges if col.isSym else mergeAny(ranges)
+        ranges = sort2(map(ranges , itself).values() , lt('lo'))
+        if type(ranges)==list:
+            u = {}
+            for k,v in enumerate(ranges):
+                u[k]=v
+        out[len(out)] =  u if col['isSym'] else mergeAny(ranges)
     return out
 
 def bin(col , x):
-    if x == '?' or col.isSym:
+    if x == '?' or col['isSym']:
         return x
-    tmp = (col.hi - col.lo) / (the['bins'] - 1)
-    return 1 if col.hi == col.lo else math.floor(x/tmp + 0.5)*tmp
+    tmp = (col['hi'] - col['lo']) / (the['bins'] - 1)
+    return 1 if col['hi'] == col['lo'] else math.floor(x/tmp + 0.5)*tmp
   
 def mergeAny(ranges0):
-  def noGaps(t):
+  def noGaps(t:dict):
     for j in range(1 , len(t)):
-      t[j].lo = t[j-1].hi
-    t[0].lo = float('-inf')
-    t[-1].hi = float('inf')
+      t[j]['lo'] = t[j-1]['hi']
+    t[0]['lo'] = float('-inf')
+    t[len(t)-1]['hi'] = float('inf')
+    if type(t) is list: 
+        u={}
+        for k,v in enumerate(t):
+            u[k]=v
+        return u
     return t
   ranges1 , j = {} , 0
   while j < len(ranges0):
     if j < len(ranges0)-1 and ranges0[j+1]:
       left , right = ranges0[j] , ranges0[j+1]
-      y = merge2(left.y , right.y)
+      y = merge2(left['y'] , right['y'])
       if y:
         j += 1
-        left.hi , left.y = right.hi , right.y
+        left['hi'] , left['y'] = right['hi'] , right['y']
     else:
       left = ranges0[j]
     push(ranges1 , left)
     j += 1
+#   if len(ranges0) == len(ranges1):
+#     print("here ranges0==ranges1: "+ str(type(noGaps(ranges0))))
+#     return noGaps(ranges0)
+#   else:
+#     print("here ranges0!=ranges1: "+ str(type(mergeAny(ranges1))))
+#     return mergeAny(ranges1)
   return noGaps(ranges0) if len(ranges0) == len(ranges1) else mergeAny(ranges1)
 
 def merge2(col1 , col2):
   new = merge(col1 , col2)
-  if div(new) <= (div(col1)*col1.n + div(col2)*col2.n)/new.n:
+  if div(new) <= (div(col1)*col1['n'] + div(col2)*col2['n'])/new['n']:
     return new
 
 def merge(col1 , col2):
   new = copy(col1)
-  if col1.isSym:
-    for x , n in col2.has:
+  if col1['isSym']:
+    for x , n in col2['has'].items():
       add(new , x , n)
   else:
-    for _ , n in col2.has:
+    for _ , n in col2['has'].items():
       add(new , n)
-    new.lo = min(col1.lo , col2.lo)
-    new.hi = max(col1.hi , col2.hi)
+    new['lo'] = min(col1['lo'] , col2['lo'])
+    new['hi'] = max(col1['hi'] , col2['hi'])
   return new
 
 def itself(x):
   return x
 
 def rnd(n , nPlaces=2):
-  mult = 10**(nPlaces)
+  mult = 10**(nPlaces or 2)
   return math.floor(n * mult + 0.5) / mult
 
 Seed=937162211
@@ -436,7 +474,7 @@ def cliffsDelta(ns1, ns2):
 # -- values are different.
 def diffs(nums1, nums2):
    def diffsfun(k, nums):
-      return cliffsDelta(nums.has,nums2[k].has), nums.txt
+      return cliffsDelta(nums['has'],nums2[k]['has']), nums['txt']
    return kap(nums1, diffsfun)
 
 ### String to thing
@@ -489,6 +527,10 @@ def sort(t:dict, fun=lambda x: x.keys()):
     for i in range(0,len(t)):
         u[i]=sl[i]
     return u
+
+def sort2(t:list, fun = lambda x: x.keys()):
+    return sorted(t, key=fun)
+
 
 
 def lt(x: str):
@@ -650,7 +692,7 @@ def go(key, str, fun):  # --> nil; register an example.
     # help = help + f'  -g  {key}\t{str}\n'
     help = help + fmt('  -g  %s\t%s\n', key, str)
 
-b4 = {}
+b5 = {}
 if __name__ == '__main__':
 
     # eg("crash","show crashing behavior", function()
@@ -695,9 +737,9 @@ if __name__ == '__main__':
             add(num1, rand())
         for _ in range(1, 10001):
             add(num2, rand()**2)
-        print("1  "+str(rnd(mid(num1)))+str(rnd(div(num1))))
-        print("2  "+str(rnd(mid(num2)))+str(rnd(div(num2))))
-        return .5 == rnd(mid(num1)) and mid(num1) > mid(num2)
+        print("1  "+str(rnd(mid(num1),1))+"   "+str(rnd(div(num1))))
+        print("2  "+str(rnd(mid(num2)))+"   "+str(rnd(div(num2))))
+        return .5 == rnd(mid(num1),1) and mid(num1) > mid(num2)
     go("nums", "demo of NUM", numsfun)
 
     def csvfun():
@@ -711,8 +753,8 @@ if __name__ == '__main__':
     
     def datafun():
         data = DATA.read(the['file'])
-        col = data.cols.x[0]
-        print(str(col.lo)+" "+str(col.hi)+" "+str(mid(col))+" "+div(col))
+        col = data.cols['x'][0]
+        print(str(col['lo'])+" "+str(col['hi'])+" "+str(mid(col))+" "+str(div(col)))
         oo(stats(data))
     go("data", "showing data sets", datafun)
 
@@ -728,8 +770,8 @@ if __name__ == '__main__':
 
 
     def cliffsfun():
-        assert False == cliffsDelta({8,7,6,2,5,8,7,3},{8,7,6,2,5,8,7,3}),"1"
-        assert True == cliffsDelta({8,7,6,2,5,8,7,3}, {9,9,7,8,10,9,6}),"2"
+        assert False == cliffsDelta({0:8,1:7,2:6,3:2,4:5,5:8,6:7,7:3},{0:8,1:7,2:6,3:2,4:5,5:8,6:7,7:3}),"1"
+        assert True == cliffsDelta({0:8,1:7,2:6,3:2,4:5,5:8,6:7,7:3}, {0:9,1:9,2:7,3:8,4:10,5:9,6:6}),"2"
         t1,t2 = {},{}
         for _ in range(0,1000): push(t1, rand())
         for _ in range(0,1000): push(t2, math.sqrt(rand()))
@@ -747,53 +789,52 @@ if __name__ == '__main__':
     def distfun():
         data = DATA.read(the['file'])
         num = NUM()
-        for _,row in enumerate(data.rows):
-            add(num,dist(data,row,data.rows[0]))
-        oo({'lo':num.lo,'hi':num.hi,'mid':rnd(mid(num)),'div':rnd(div(num))})
+        for _,row in data.rows.items():
+            add(num,dist(data,row,data.rows[0],None))
+        oo({'lo':num['lo'],'hi':num['hi'],'mid':rnd(mid(num)),'div':rnd(div(num))})
     go("dist","distance test", distfun)
 
     def halffun():
         data = DATA.read(the['file'])
-        left, right, A, B, c = data.half()
-        print(str(len(left))+"   "+str(len(right))+"   "+str(len(data.rows)))
-        tmpL = []
-        for num in left.cells.values():
-            tmpL.append(str(num))
-        print('{' + ' '.join(tmpL) + '}     '+str(c))
-        tmpR = []
-        for num in right.cells.values():
-            tmpR.append(str(num))
-        print('{' + ' '.join(tmpR) + '}')
+        left, right, A, B, c = half(data)
+        print(str(len(left))+"   "+str(len(right)))
+        l = DATA.clone(data,left)
+        r = DATA.clone(data,right)
+        print("l   "+str(o(stats(l))))
+        print("r   "+str(o(stats(r))))
     go("half","divide data in half", halffun)
 
     def treefun():
-        showTree(tree(DATA(the['file'])))
+        showTree(tree(DATA.read(the['file'])))
     go("tree","make snd show tree of clusters", treefun)
 
     def swayfun():
         data = DATA.read(the['file'])
         best,rest = sway(data)
-        print("\nall    "+oo(stats(data)))
-        print("       "+oo(stats(data,div)))
-        print("\nbest    "+oo(stats(best)))
-        print("       "+oo(stats(best,div)))
-        print("\nrest    "+oo(stats(rest)))
-        print("       "+oo(stats(rest,div)))
-        print("\nall != best?   "+oo(diffs(best.cols.y, data.cols.y)))
-        print("best != rest?   "+oo(diffs(best.cols.y, rest.cols.y)))
+        print("\nall    "+str(o(stats(data))))
+        print("       "+str(o(stats(data,'div'))))
+        print("\nbest    "+str(o(stats(best))))
+        print("       "+str(o(stats(best,'div'))))
+        print("\nrest    "+str(o(stats(rest))))
+        print("       "+str(o(stats(rest,'div'))))
+        print("\nall != best?   "+str(o(diffs(best.cols['y'], data.cols['y']))))
+        print("best != rest?   "+str(o(diffs(best.cols['y'], rest.cols['y']))))
     go("sway","optimizing", swayfun)
 
 
     def binsfun():
-        global b4
+        b5=""
         data = DATA.read(the['file'])
         best,rest = sway(data)
-        print("all     "+oo({'best':len(best.rows), 'rest':len(rest.rows)}))
-        for k,t in enumerate(bins(data.cols.x,{'best':best.rows,'rest':rest.rows})):
+        print("all     "+str(o({'best':len(best.rows), 'rest':len(rest.rows)})))
+        #print(bins(data.cols['x'],{'best':best.rows,'rest':rest.rows}))
+        for k,t in bins(data.cols['x'],{'best':best.rows,'rest':rest.rows}).items():
             for _,range in t.items():
-                if range.txt != b4: print("  ")
-                b4 = range.txt
-                print(str(range.txt)+"  "+str(range.lo)+"  "+str(range.hi)+"  "+rnd(value(range.y.has,len(best.rows,len(rest.rows),"best")))+"  "+oo(range.y.has))
+                if range['txt'] != b5: print("  ")
+                b5 = range['txt']
+                #print("this is range:")
+                #print(range)
+                print(str(range['txt'])+"  "+str(range['lo'])+"  "+str(range['hi'])+"  "+str(rnd(value(range['y']['has'],len(best.rows),len(rest.rows),"best")))+"  "+str(o(range['y']['has'])))
     go("bins", "find deltas between best and rest", binsfun)
 
     main(the, help, egs)
