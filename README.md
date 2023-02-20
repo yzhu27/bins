@@ -14,7 +14,7 @@ Since this work is based on previous HWs, we do not explain details, in order to
 
 ![result img](./etc/images/expected_result.png)
 
-* As for our result:
+* As for our [result](https://github.com/yzhu27/bins/blob/main/etc/out/bins.out):
 
 ![result img](./etc/images/result.png)
 
