@@ -16,4 +16,5 @@ Since this work is based on previous HWs, we do not explain details, in order to
 
 * As for our result:
 
+![result img](./etc/images/result.png)
 
